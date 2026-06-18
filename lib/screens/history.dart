@@ -1,4 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:modo/db/db_helper.dart';
 
 class HistoryScreen extends StatefulWidget {
@@ -26,6 +30,118 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   Future<void> _refresh() async {
     setState(() => _load());
+  }
+
+  Future<void> _exportExpenses() async {
+    final rows = await db.getAllExpenses();
+    final jsonString = jsonEncode(rows);
+    await Clipboard.setData(ClipboardData(text: jsonString));
+
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Export Complete'),
+          content: const Text('Expense JSON copied to clipboard.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _importExpenses() async {
+    final controller = TextEditingController();
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Import Expenses'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Paste exported JSON here to import expenses:'),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                keyboardType: TextInputType.multiline,
+                minLines: 4,
+                maxLines: 10,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  hintText: 'Paste JSON export here',
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                final clipboard = await Clipboard.getData('text/plain');
+                controller.text = clipboard?.text ?? '';
+              },
+              child: const Text('Paste from Clipboard'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                try {
+                  final decoded = jsonDecode(controller.text);
+                  if (decoded is List) {
+                    var importedCount = 0;
+                    for (final item in decoded) {
+                      if (item is Map<String, dynamic> || item is Map) {
+                        final map = Map<String, dynamic>.from(item as Map);
+                        final expense = {
+                          'title': map['title'] ?? '',
+                          'description': map['description'] ?? '',
+                          'amount': (map['amount'] is num)
+                              ? (map['amount'] as num).toDouble()
+                              : double.tryParse(
+                                      map['amount']?.toString() ?? '0',
+                                    ) ??
+                                    0.0,
+                          'category': map['category'] ?? 'Other',
+                          'expense_date':
+                              map['expense_date'] ??
+                              DateTime.now().toIso8601String().split('T').first,
+                          'expense_time': map['expense_time'] ?? '',
+                        };
+                        await db.addExpense(expense);
+                        importedCount++;
+                      }
+                    }
+                    await _refresh();
+                    if (!mounted) return;
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(this.context).showSnackBar(
+                      SnackBar(
+                        content: Text('Imported $importedCount expenses'),
+                      ),
+                    );
+                    return;
+                  }
+                } catch (_) {}
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Invalid JSON import data')),
+                  );
+                }
+              },
+              child: const Text('Import'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Map<String, List<Map<String, dynamic>>> groupByDate(
@@ -118,19 +234,77 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           builder: (context) {
                             final description = (e['description'] as String?)
                                 ?.trim();
-                            return AlertDialog(
-                              title: Text(e['title'] ?? 'Expense'),
-                              content: Text(
-                                description != null && description.isNotEmpty
-                                    ? description
-                                    : 'No description available.',
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: const Text('Close'),
-                                ),
-                              ],
+                            final dateValue = e['expense_date'] ?? '';
+                            String importedDate = '';
+
+                            return StatefulBuilder(
+                              builder: (context, setState) {
+                                return AlertDialog(
+                                  title: Text(e['title'] ?? 'Expense'),
+                                  content: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        description != null &&
+                                                description.isNotEmpty
+                                            ? description
+                                            : 'No description available.',
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Text('Date: $dateValue'),
+                                      if (importedDate.isNotEmpty) ...[
+                                        const SizedBox(height: 12),
+                                        Text('Imported: $importedDate'),
+                                      ],
+                                    ],
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () async {
+                                        await Clipboard.setData(
+                                          ClipboardData(text: dateValue),
+                                        );
+                                        if (mounted) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text('Date copied'),
+                                              duration: Duration(
+                                                milliseconds: 900,
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      },
+                                      child: const Text('Copy Date'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () async {
+                                        final clipboard =
+                                            await Clipboard.getData(
+                                              'text/plain',
+                                            );
+                                        final clipboardText =
+                                            clipboard?.text?.trim() ?? '';
+                                        setState(() {
+                                          importedDate =
+                                              clipboardText.isNotEmpty
+                                              ? clipboardText
+                                              : 'No date found in clipboard';
+                                        });
+                                      },
+                                      child: const Text('Import Date'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: const Text('Close'),
+                                    ),
+                                  ],
+                                );
+                              },
                             );
                           },
                         );
@@ -143,52 +317,78 @@ class _HistoryScreenState extends State<HistoryScreen> {
           },
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: SpeedDial(
+        icon: Icons.menu_rounded,
+        activeIcon: Icons.close,
+        backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
-        icon: const Icon(Icons.delete_outline),
-        label: const Text('Clear All'),
-        backgroundColor: Theme.of(context).colorScheme.error,
-        onPressed: () async {
-          final confirmed = await showDialog<bool>(
-            context: context,
-            builder: (context) {
-              return AlertDialog(
-                title: const Text('Clear all expenses?'),
-                content: const Text(
-                  'This will permanently delete all saved expense records.',
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: const Text(
-                      'Cancel',
-                      style: TextStyle(color: Colors.green),
+        overlayColor: Colors.black12,
+        overlayOpacity: 0.4,
+        spacing: 12,
+        spaceBetweenChildren: 8,
+        children: [
+          SpeedDialChild(
+            child: const Icon(Icons.delete_outline),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            label: 'Clear All',
+            labelBackgroundColor: Theme.of(context).colorScheme.surface,
+            onTap: () async {
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (context) {
+                  return AlertDialog(
+                    title: const Text('Clear all expenses?'),
+                    content: const Text(
+                      'This will permanently delete all saved expense records.',
                     ),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    child: const Text(
-                      'Clear',
-                      style: TextStyle(
-                        color: Colors.red,
-                        fontWeight: FontWeight.bold,
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(color: Colors.green),
+                        ),
                       ),
-                    ),
-                  ),
-                ],
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text(
+                          'Clear',
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
               );
+              if (confirmed == true) {
+                await db.clearExpenses();
+                await _refresh();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('All expenses cleared')),
+                  );
+                }
+              }
             },
-          );
-          if (confirmed == true) {
-            await db.clearExpenses();
-            await _refresh();
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('All expenses cleared')),
-              );
-            }
-          }
-        },
+          ),
+          SpeedDialChild(
+            child: const Icon(Icons.upload_file),
+            backgroundColor: Theme.of(context).colorScheme.secondary,
+            label: 'Export',
+            labelBackgroundColor: Theme.of(context).colorScheme.surface,
+            onTap: _exportExpenses,
+          ),
+          SpeedDialChild(
+            child: const Icon(Icons.download),
+            backgroundColor: Theme.of(context).colorScheme.secondary,
+            label: 'Import',
+            labelBackgroundColor: Theme.of(context).colorScheme.surface,
+            onTap: _importExpenses,
+          ),
+        ],
       ),
     );
   }
