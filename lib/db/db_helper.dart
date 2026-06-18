@@ -17,11 +17,7 @@ class DBHelper {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, 'expenses.db');
 
-    return openDatabase(
-      path,
-      version: 1,
-      onCreate: _onCreate,
-    );
+    return openDatabase(path, version: 1, onCreate: _onCreate);
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -73,7 +69,7 @@ class DBHelper {
   Future<double> getTodaySpending() async {
     final db = await database;
     final res = await db.rawQuery(
-      "SELECT SUM(amount) as total FROM expenses WHERE expense_date = date('now')"
+      "SELECT SUM(amount) as total FROM expenses WHERE expense_date = date('now')",
     );
     return (res.first['total'] as num?)?.toDouble() ?? 0.0;
   }
@@ -81,7 +77,7 @@ class DBHelper {
   Future<double> getWeekSpending() async {
     final db = await database;
     final res = await db.rawQuery(
-      "SELECT SUM(amount) as total FROM expenses WHERE expense_date >= date('now', 'weekday 0', '-7 days')"
+      "SELECT SUM(amount) as total FROM expenses WHERE expense_date >= date('now', 'weekday 0', '-7 days')",
     );
     return (res.first['total'] as num?)?.toDouble() ?? 0.0;
   }
@@ -89,7 +85,7 @@ class DBHelper {
   Future<double> getMonthSpending() async {
     final db = await database;
     final res = await db.rawQuery(
-      "SELECT SUM(amount) as total FROM expenses WHERE strftime('%Y-%m', expense_date) = strftime('%Y-%m', 'now')"
+      "SELECT SUM(amount) as total FROM expenses WHERE strftime('%Y-%m', expense_date) = strftime('%Y-%m', 'now')",
     );
     return (res.first['total'] as num?)?.toDouble() ?? 0.0;
   }
@@ -112,11 +108,14 @@ class DBHelper {
     String to,
   ) async {
     final db = await database;
-    return db.rawQuery('''
+    return db.rawQuery(
+      '''
       SELECT * FROM expenses
       WHERE expense_date BETWEEN ? AND ?
       ORDER BY expense_date DESC, expense_time DESC
-    ''', [from, to]);
+    ''',
+      [from, to],
+    );
   }
 
   Future<List<Map<String, dynamic>>> getCategoryTotalsThisMonth() async {

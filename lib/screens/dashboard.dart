@@ -264,7 +264,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         LineChartBarData(
                           spots: spots,
                           isCurved: true,
-                          color: Colors.grey,                          barWidth: 3,
+                          color: Colors.grey,
+                          barWidth: 3,
                           dotData: const FlDotData(show: true),
                           belowBarData: BarAreaData(
                             show: true,

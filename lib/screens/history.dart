@@ -116,7 +116,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         showDialog(
                           context: context,
                           builder: (context) {
-                            final description = (e['description'] as String?)?.trim();
+                            final description = (e['description'] as String?)
+                                ?.trim();
                             return AlertDialog(
                               title: Text(e['title'] ?? 'Expense'),
                               content: Text(
