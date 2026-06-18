@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:modo/db/db_helper.dart';
-import 'package:modo/screens/add.dart';
 
 class HistoryScreen extends StatefulWidget {
   final VoidCallback onThemeToggle;

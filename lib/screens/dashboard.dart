@@ -220,19 +220,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         topTitles: const AxisTitles(
                           sideTitles: SideTitles(showTitles: false),
                         ),
-                        leftTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: true),
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 48,
+                            getTitlesWidget: (value, meta) {
+                              final kValue = value / 1000;
+                              final label = kValue <= 0
+                                  ? '0'
+                                  : kValue >= 1
+                                  ? '${kValue.toStringAsFixed(kValue % 1 == 0 ? 0 : 1)}k'
+                                  : kValue >= 0.1
+                                  ? '${kValue.toStringAsFixed(1)}k'
+                                  : '${kValue.toStringAsFixed(2)}k';
+                              return Text(
+                                label,
+                                style: const TextStyle(fontSize: 10),
+                              );
+                            },
+                          ),
                         ),
                         bottomTitles: AxisTitles(
                           sideTitles: SideTitles(
                             showTitles: true,
+                            reservedSize: 32,
                             getTitlesWidget: (value, meta) {
                               final index = value.toInt();
                               if (index >= 0 && index < data.length) {
-                                // Show every other week to avoid crowding
                                 if (index % 2 == 0) {
                                   return Text(
-                                    'W${(index + 1).toString().padLeft(2, '0')}',
+                                    index.toString(),
                                     style: const TextStyle(fontSize: 10),
                                   );
                                 }
@@ -247,12 +264,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         LineChartBarData(
                           spots: spots,
                           isCurved: true,
-                          color: Colors.green.shade600,
-                          barWidth: 3,
+                          color: Colors.grey,                          barWidth: 3,
                           dotData: const FlDotData(show: true),
                           belowBarData: BarAreaData(
                             show: true,
-                            color: Colors.green.withAlpha(100),
+                            color: Colors.grey.withValues(alpha: 0.3),
                           ),
                         ),
                       ],
@@ -287,7 +303,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 leading: const Icon(Icons.monetization_on),
                 title: Text(e['title'] ?? ''),
                 subtitle: Text(
-                  '${e['category']}''${(e['description'] as String?)?.isNotEmpty == true ? ' • ${e['description']}' : ''}',
+                  '${e['category']}'
+                  '${(e['description'] as String?)?.isNotEmpty == true ? ' • ${e['description']}' : ''}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
