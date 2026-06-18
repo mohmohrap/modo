@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:modo/db/db_helper.dart';
+import 'package:modo/screens/add.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+  final VoidCallback onThemeToggle;
+
+  const DashboardScreen({super.key, required this.onThemeToggle});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -12,8 +17,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   late Future<double> today;
   late Future<double> week;
   late Future<double> month;
-  late Future<Map<String, dynamic>?> topCategory;
+  late Future<List<Map<String, dynamic>>> topCategory;
   late Future<List<Map<String, dynamic>>> recent;
+  late Future<List<Map<String, dynamic>>> weeklyData;
 
   final db = DBHelper.instance;
 
@@ -27,21 +33,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
     today = db.getTodaySpending();
     week = db.getWeekSpending();
     month = db.getMonthSpending();
-    topCategory = db.getTopCategoryThisMonth();
+    topCategory = db.getTopCategoriesThisMonth();
     recent = db.getRecentTransactions();
+    weeklyData = db.getWeeklySpendingPast12Weeks();
   }
 
   Future<void> _refresh() async {
     setState(() => _load());
   }
 
-  
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Dashboard'),
+        actions: [
+          IconButton(
+            icon: Icon(
+              Theme.of(context).brightness == Brightness.dark
+                  ? Icons.light_mode
+                  : Icons.dark_mode,
+            ),
+            onPressed: widget.onThemeToggle,
+            tooltip: 'Toggle theme',
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: _refresh,
@@ -52,9 +68,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const SizedBox(height: 20),
             _buildTopCategory(),
             const SizedBox(height: 20),
+            _buildLineChart(),
+            const SizedBox(height: 20),
             _buildRecent(),
           ],
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+        onPressed: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const AddExpenseScreen()),
+          );
+          _refresh();
+        },
+        tooltip: 'Add Expense',
+        child: const Icon(Icons.add_circle_rounded),
       ),
     );
   }
@@ -67,10 +97,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Expanded(child: _card("Today", today)),
             const SizedBox(width: 10),
             Expanded(child: _card("This Week", week)),
+            Expanded(child: _card("This Month", month)),
           ],
         ),
-        const SizedBox(height: 10),
-        _card("This Month", month),
       ],
     );
   }
@@ -83,10 +112,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
         return Container(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            color: Colors.green.shade50,
-          ),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(20)),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -107,19 +133,134 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildTopCategory() {
-    return FutureBuilder<Map<String, dynamic>?>(
+    return FutureBuilder<List<Map<String, dynamic>>>(
       future: topCategory,
       builder: (context, snapshot) {
-        final data = snapshot.data;
+        final data = snapshot.data ?? [];
+        final monthName = DateFormat('MMMM').format(DateTime.now());
+
+        if (data.isEmpty) {
+          return Card(
+            child: ListTile(
+              leading: const Icon(Icons.category),
+              title: Text("Top Categories in $monthName"),
+              subtitle: const Text("No data"),
+            ),
+          );
+        }
+
+        // Build a string for top 3 categories
+        final items = <String>[];
+        for (int i = 0; i < data.length && i < 3; i++) {
+          final entry = data[i];
+          final cat = entry['category'] ?? '';
+          final total = entry['total'] ?? 0;
+          items.add("${i + 1}. $cat - KES $total");
+        }
 
         return Card(
           child: ListTile(
             leading: const Icon(Icons.category),
-            title: const Text("Top Category (This Month)"),
-            subtitle: Text(
-              data == null
-                  ? "No data"
-                  : "${data['category']} - KES ${data['total']}",
+            title: Text("Top Categories in $monthName"),
+            subtitle: Text(items.join('\n')),
+            isThreeLine: items.length > 1,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildLineChart() {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: weeklyData,
+      builder: (context, snapshot) {
+        final data = snapshot.data ?? [];
+
+        if (data.isEmpty) {
+          return Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                'No spending data for the past 12 weeks',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ),
+          );
+        }
+
+        // Prepare data for the chart
+        final spots = <FlSpot>[];
+        for (int i = 0; i < data.length; i++) {
+          final amount = (data[i]['total'] as num?)?.toDouble() ?? 0.0;
+          spots.add(FlSpot(i.toDouble(), amount));
+        }
+
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Spending (Past 12 Weeks)",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  height: 250,
+                  child: LineChart(
+                    LineChartData(
+                      gridData: const FlGridData(show: true),
+                      titlesData: FlTitlesData(
+                        show: true,
+                        rightTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        topTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        leftTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: true),
+                        ),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            getTitlesWidget: (value, meta) {
+                              final index = value.toInt();
+                              if (index >= 0 && index < data.length) {
+                                // Show every other week to avoid crowding
+                                if (index % 2 == 0) {
+                                  return Text(
+                                    'W${(index + 1).toString().padLeft(2, '0')}',
+                                    style: const TextStyle(fontSize: 10),
+                                  );
+                                }
+                              }
+                              return const Text('');
+                            },
+                          ),
+                        ),
+                      ),
+                      borderData: FlBorderData(show: true),
+                      lineBarsData: [
+                        LineChartBarData(
+                          spots: spots,
+                          isCurved: true,
+                          color: Colors.green.shade600,
+                          barWidth: 3,
+                          dotData: const FlDotData(show: true),
+                          belowBarData: BarAreaData(
+                            show: true,
+                            color: Colors.green.withAlpha(100),
+                          ),
+                        ),
+                      ],
+                      minY: 0,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         );
@@ -138,18 +279,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: [
             const Text(
               "Recent Transactions",
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
             ...items.map((e) {
               return ListTile(
                 leading: const Icon(Icons.monetization_on),
                 title: Text(e['title'] ?? ''),
-                subtitle: Text(e['category']),
+                subtitle: Text(
+                  '${e['category']}''${(e['description'] as String?)?.isNotEmpty == true ? ' • ${e['description']}' : ''}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 trailing: Text("KES ${e['amount']}"),
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AddExpenseScreen(expense: e),
+                    ),
+                  );
+                  _refresh();
+                },
               );
             }),
           ],

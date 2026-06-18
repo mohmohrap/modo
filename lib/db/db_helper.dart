@@ -44,6 +44,11 @@ class DBHelper {
     return db.insert('expenses', data);
   }
 
+  Future<int> updateExpense(int id, Map<String, dynamic> data) async {
+    final db = await database;
+    return db.update('expenses', data, where: 'id = ?', whereArgs: [id]);
+  }
+
   Future<List<Map<String, dynamic>>> getAllExpenses() async {
     final db = await database;
     return db.query(
@@ -121,6 +126,31 @@ class DBHelper {
       SELECT category, SUM(amount) as total
       FROM expenses
       WHERE strftime('%Y-%m', expense_date) = strftime('%Y-%m','now')
+      GROUP BY category
+      ORDER BY total DESC
+    ''');
+  }
+
+  Future<List<Map<String, dynamic>>> getWeeklySpendingPast12Weeks() async {
+    final db = await database;
+    return db.rawQuery('''
+      SELECT 
+        strftime('%Y-W%w', expense_date) as week,
+        date(expense_date, 'weekday 0', '-6 days') as week_start,
+        SUM(amount) as total
+      FROM expenses
+      WHERE expense_date >= date('now', '-84 days')
+      GROUP BY strftime('%Y-W%w', expense_date)
+      ORDER BY week_start ASC
+    ''');
+  }
+
+  Future<List<Map<String, dynamic>>> getTopCategoriesThisMonth() async {
+    final db = await database;
+    return db.rawQuery('''
+      SELECT category, SUM(amount) as total
+      FROM expenses
+      WHERE strftime('%Y-%m', expense_date) = strftime('%Y-%m', 'now')
       GROUP BY category
       ORDER BY total DESC
     ''');

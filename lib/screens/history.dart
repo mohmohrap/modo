@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:modo/db/db_helper.dart';
+import 'package:modo/screens/add.dart';
 
 class HistoryScreen extends StatefulWidget {
-  const HistoryScreen({super.key});
+  final VoidCallback onThemeToggle;
+
+  const HistoryScreen({super.key, required this.onThemeToggle});
 
   @override
   State<HistoryScreen> createState() => _HistoryScreenState();
@@ -59,7 +62,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("History")),
+      appBar: AppBar(
+        title: const Text("History"),
+        actions: [
+          IconButton(
+            icon: Icon(
+              Theme.of(context).brightness == Brightness.dark
+                  ? Icons.light_mode
+                  : Icons.dark_mode,
+            ),
+            onPressed: widget.onThemeToggle,
+            tooltip: 'Toggle theme',
+          ),
+        ],
+      ),
       body: RefreshIndicator(
         onRefresh: _refresh,
         child: FutureBuilder<List<Map<String, dynamic>>>(
@@ -97,6 +113,28 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         "KES ${e['amount']}",
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (context) {
+                            final description = (e['description'] as String?)?.trim();
+                            return AlertDialog(
+                              title: Text(e['title'] ?? 'Expense'),
+                              content: Text(
+                                description != null && description.isNotEmpty
+                                    ? description
+                                    : 'No description available.',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text('Close'),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      },
                     );
                   }).toList(),
                 );

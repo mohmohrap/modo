@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:modo/db/db_helper.dart';
 
 class AddExpenseScreen extends StatefulWidget {
-  const AddExpenseScreen({super.key});
+  final Map<String, dynamic>? expense;
+
+  const AddExpenseScreen({super.key, this.expense});
 
   @override
   State<AddExpenseScreen> createState() => AddExpenseScreenState();
@@ -23,16 +25,17 @@ class AddExpenseScreenState extends State<AddExpenseScreen> {
 
   TimeOfDay _selectedTime = TimeOfDay.now();
 
-  bool _createCalendarEvent = false;
+  int? _expenseId;
 
   final List<String> categories = [
     'Food',
-    'Transport',
+    'Travel',
     'Rent',
+    'Family',
+    'Utilities',
     'Business',
     'Health',
     'Entertainment',
-    'Education',
     'Other',
   ];
 
@@ -64,6 +67,47 @@ class AddExpenseScreenState extends State<AddExpenseScreen> {
     }
   }
 
+  TimeOfDay _parseTime(String timeString) {
+    final normalized = timeString.toLowerCase().replaceAll('.', '');
+    final match = RegExp(
+      r'(\d{1,2}):(\d{2})\s*([ap]m)?',
+    ).firstMatch(normalized);
+    if (match != null) {
+      var hour = int.parse(match.group(1)!);
+      final minute = int.parse(match.group(2)!);
+      final suffix = match.group(3);
+      if (suffix != null) {
+        if (suffix == 'pm' && hour < 12) hour += 12;
+        if (suffix == 'am' && hour == 12) hour = 0;
+      }
+      return TimeOfDay(hour: hour, minute: minute);
+    }
+    return TimeOfDay.now();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final expense = widget.expense;
+    if (expense != null) {
+      _expenseId = expense['id'] as int?;
+      _titleController.text = expense['title'] ?? '';
+      _descriptionController.text = expense['description'] ?? '';
+      _amountController.text = expense['amount']?.toString() ?? '';
+      _selectedCategory = expense['category'] ?? _selectedCategory;
+      try {
+        _selectedDate = DateTime.parse(
+          expense['expense_date'] ?? DateTime.now().toIso8601String(),
+        );
+      } catch (_) {
+        _selectedDate = DateTime.now();
+      }
+      _selectedTime = _parseTime(
+        expense['expense_time'] ?? _selectedTime.format(context),
+      );
+    }
+  }
+
   void _saveExpense() async {
     if (_formKey.currentState!.validate()) {
       final db = DBHelper.instance;
@@ -80,17 +124,23 @@ class AddExpenseScreenState extends State<AddExpenseScreen> {
         "expense_time": _selectedTime.format(context),
       };
 
-      await db.addExpense(expense);
+      if (_expenseId != null) {
+        await db.updateExpense(_expenseId!, expense);
+      } else {
+        await db.addExpense(expense);
+      }
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Expense saved')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _expenseId != null ? 'Expense updated' : 'Expense saved',
+          ),
+        ),
+      );
 
-      Navigator.pop(
-        context,
-      ); // optional if using PageView, remove if swiping UI
+      Navigator.pop(context);
     }
   }
 
@@ -104,8 +154,10 @@ class AddExpenseScreenState extends State<AddExpenseScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isEditing = _expenseId != null;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Expense')),
+      appBar: AppBar(title: Text(isEditing ? 'Edit Expense' : 'Add Expense')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -165,7 +217,7 @@ class AddExpenseScreenState extends State<AddExpenseScreen> {
                 const SizedBox(height: 16),
 
                 DropdownButtonFormField<String>(
-                  value: _selectedCategory,
+                  initialValue: _selectedCategory,
                   decoration: const InputDecoration(
                     labelText: 'Category',
                     border: OutlineInputBorder(),
@@ -213,19 +265,6 @@ class AddExpenseScreenState extends State<AddExpenseScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 16),
-
-                SwitchListTile(
-                  value: _createCalendarEvent,
-                  title: const Text('Create Calendar Event'),
-                  subtitle: const Text('Add this expense to Android Calendar'),
-                  onChanged: (value) {
-                    setState(() {
-                      _createCalendarEvent = value;
-                    });
-                  },
-                ),
-
                 const SizedBox(height: 24),
 
                 SizedBox(
@@ -234,7 +273,7 @@ class AddExpenseScreenState extends State<AddExpenseScreen> {
                   child: FilledButton.icon(
                     onPressed: _saveExpense,
                     icon: const Icon(Icons.save),
-                    label: const Text('Save Expense'),
+                    label: Text(isEditing ? 'Update Expense' : 'Save Expense'),
                   ),
                 ),
               ],
