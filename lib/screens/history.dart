@@ -143,6 +143,53 @@ class _HistoryScreenState extends State<HistoryScreen> {
           },
         ),
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.delete_outline),
+        label: const Text('Clear All'),
+        backgroundColor: Theme.of(context).colorScheme.error,
+        onPressed: () async {
+          final confirmed = await showDialog<bool>(
+            context: context,
+            builder: (context) {
+              return AlertDialog(
+                title: const Text('Clear all expenses?'),
+                content: const Text(
+                  'This will permanently delete all saved expense records.',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(color: Colors.green),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text(
+                      'Clear',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          );
+          if (confirmed == true) {
+            await db.clearExpenses();
+            await _refresh();
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('All expenses cleared')),
+              );
+            }
+          }
+        },
+      ),
     );
   }
 }

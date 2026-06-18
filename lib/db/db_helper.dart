@@ -45,6 +45,11 @@ class DBHelper {
     return db.update('expenses', data, where: 'id = ?', whereArgs: [id]);
   }
 
+  Future<int> clearExpenses() async {
+    final db = await database;
+    return db.delete('expenses');
+  }
+
   Future<List<Map<String, dynamic>>> getAllExpenses() async {
     final db = await database;
     return db.query(
