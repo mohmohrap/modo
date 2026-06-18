@@ -29,14 +29,16 @@ class AddExpenseScreenState extends State<AddExpenseScreen> {
 
   final List<String> categories = [
     'Food',
-    'Travel',
+    'Transport/Travel',
     'Rent',
     'Family',
     'Utilities',
-    'Business',
-    'Health',
-    'Entertainment',
-    'Other',
+    'Investment',
+    'Hospital',
+    'Airtime',
+    'Internet',
+    'Shopping',
+    'Extras',
   ];
 
   Future<void> _pickDate() async {
