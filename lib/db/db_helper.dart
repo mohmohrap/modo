@@ -159,4 +159,14 @@ class DBHelper {
       ORDER BY total DESC
     ''');
   }
+
+  Future<List<Map<String, dynamic>>> getTopCategoriesAllTime() async {
+    final db = await database;
+    return db.rawQuery('''
+      SELECT category, SUM(amount) as total
+      FROM expenses
+      GROUP BY category
+      ORDER BY total DESC
+    ''');
+  }
 }

@@ -6,31 +6,43 @@ import 'package:modo/theme_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   await DBHelper.instance.initDB();
-  runApp(const ExpenseApp());
+
+  final themeProvider = ThemeProvider();
+  await themeProvider.loadTheme();
+
+  runApp(ExpenseApp(themeProvider: themeProvider));
 }
 
 class ExpenseApp extends StatefulWidget {
-  const ExpenseApp({super.key});
+  final ThemeProvider themeProvider;
+
+  const ExpenseApp({super.key, required this.themeProvider});
 
   @override
   State<ExpenseApp> createState() => _ExpenseAppState();
 }
 
 class _ExpenseAppState extends State<ExpenseApp> {
-  final ThemeProvider _themeProvider = ThemeProvider();
+  late final ThemeProvider _themeProvider;
 
   @override
   void initState() {
     super.initState();
-    _themeProvider.addListener(() {
-      setState(() {});
-    });
+
+    _themeProvider = widget.themeProvider;
+
+    _themeProvider.addListener(_themeChanged);
+  }
+
+  void _themeChanged() {
+    setState(() {});
   }
 
   @override
   void dispose() {
-    _themeProvider.dispose();
+    _themeProvider.removeListener(_themeChanged);
     super.dispose();
   }
 
@@ -38,17 +50,17 @@ class _ExpenseAppState extends State<ExpenseApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Expense Tracker',
+      title: 'Modo',
       theme: lightTheme(),
       darkTheme: darkTheme(),
       themeMode: _themeProvider.value,
-      home: HomePage(onThemeToggle: _themeProvider.toggleTheme),
+      home: HomePage(onThemeToggle: () => _themeProvider.toggleTheme()),
     );
   }
 }
 
 class HomePage extends StatefulWidget {
-  final VoidCallback onThemeToggle;
+  final Future<void> Function() onThemeToggle;
 
   const HomePage({super.key, required this.onThemeToggle});
 
@@ -60,12 +72,18 @@ class _HomePageState extends State<HomePage> {
   final PageController _controller = PageController();
 
   @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return PageView(
       controller: _controller,
       children: [
-        DashboardScreen(onThemeToggle: widget.onThemeToggle),
-        HistoryScreen(onThemeToggle: widget.onThemeToggle),
+        DashboardScreen(onThemeToggle: () => widget.onThemeToggle()),
+        HistoryScreen(onThemeToggle: () => widget.onThemeToggle()),
       ],
     );
   }

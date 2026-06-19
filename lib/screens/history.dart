@@ -61,11 +61,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Import Expenses'),
+          icon: const Icon(Icons.paste_rounded),
+          title: const Text('Import Expenses?'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Paste exported JSON here to import expenses:'),
+              const Text('Paste JSON text to import expenses'),
               const SizedBox(height: 12),
               TextField(
                 controller: controller,
@@ -74,7 +75,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 maxLines: 10,
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
-                  hintText: 'Paste JSON export here',
+                  hintText: 'Paste JSON text here',
                 ),
               ),
             ],
@@ -85,7 +86,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 final clipboard = await Clipboard.getData('text/plain');
                 controller.text = clipboard?.text ?? '';
               },
-              child: const Text('Paste from Clipboard'),
+              child: const Text(
+                'Paste from Clipboard',
+                style: TextStyle(
+                  color: Colors.blue,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -136,7 +143,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   );
                 }
               },
-              child: const Text('Import'),
+              child: const Text(
+                'Import',
+                style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ],
         );
@@ -252,52 +265,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                             ? description
                                             : 'No description available.',
                                       ),
-                                      const SizedBox(height: 12),
-                                      Text('Date: $dateValue'),
-                                      if (importedDate.isNotEmpty) ...[
-                                        const SizedBox(height: 12),
-                                        Text('Imported: $importedDate'),
-                                      ],
                                     ],
                                   ),
                                   actions: [
-                                    TextButton(
-                                      onPressed: () async {
-                                        await Clipboard.setData(
-                                          ClipboardData(text: dateValue),
-                                        );
-                                        if (mounted) {
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            const SnackBar(
-                                              content: Text('Date copied'),
-                                              duration: Duration(
-                                                milliseconds: 900,
-                                              ),
-                                            ),
-                                          );
-                                        }
-                                      },
-                                      child: const Text('Copy Date'),
-                                    ),
-                                    TextButton(
-                                      onPressed: () async {
-                                        final clipboard =
-                                            await Clipboard.getData(
-                                              'text/plain',
-                                            );
-                                        final clipboardText =
-                                            clipboard?.text?.trim() ?? '';
-                                        setState(() {
-                                          importedDate =
-                                              clipboardText.isNotEmpty
-                                              ? clipboardText
-                                              : 'No date found in clipboard';
-                                        });
-                                      },
-                                      child: const Text('Import Date'),
-                                    ),
                                     TextButton(
                                       onPressed: () => Navigator.pop(context),
                                       child: const Text('Close'),
@@ -337,9 +307,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 context: context,
                 builder: (context) {
                   return AlertDialog(
+                    icon: Icon(Icons.warning_rounded),
                     title: const Text('Clear all expenses?'),
                     content: const Text(
-                      'This will permanently delete all saved expense records.',
+                      'This will permanently delete all saved expense records!',
                     ),
                     actions: [
                       TextButton(

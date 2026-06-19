@@ -18,6 +18,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   late Future<double> week;
   late Future<double> month;
   late Future<List<Map<String, dynamic>>> topCategory;
+  late Future<List<Map<String, dynamic>>> topAllTime;
   late Future<List<Map<String, dynamic>>> recent;
   late Future<List<Map<String, dynamic>>> weeklyData;
 
@@ -34,6 +35,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     week = db.getWeekSpending();
     month = db.getMonthSpending();
     topCategory = db.getTopCategoriesThisMonth();
+    topAllTime = db.getTopCategoriesAllTime();
     recent = db.getRecentTransactions();
     weeklyData = db.getWeeklySpendingPast12Weeks();
   }
@@ -65,6 +67,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           padding: const EdgeInsets.all(16),
           children: [
             _buildSummaryCards(),
+            const SizedBox(height: 20),
+            _buildTopAllTime(),
             const SizedBox(height: 20),
             _buildTopCategory(),
             const SizedBox(height: 20),
@@ -142,16 +146,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
         if (data.isEmpty) {
           return Card(
             child: ListTile(
-              leading: const Icon(Icons.category),
+              leading: const Icon(Icons.arrow_upward_rounded),
               title: Text("Top Categories in $monthName"),
               subtitle: const Text("No data"),
             ),
           );
         }
 
-        // Build a string for top 3 categories
+        // Build a string for top 5 categories
         final items = <String>[];
-        for (int i = 0; i < data.length && i < 3; i++) {
+        for (int i = 0; i < data.length && i < 5; i++) {
           final entry = data[i];
           final cat = entry['category'] ?? '';
           final total = entry['total'] ?? 0;
@@ -160,10 +164,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
         return Card(
           child: ListTile(
-            leading: const Icon(Icons.category),
+            leading: const Icon(Icons.arrow_upward_rounded),
             title: Text("Top Categories in $monthName"),
             subtitle: Text(items.join('\n')),
             isThreeLine: items.length > 1,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTopAllTime() {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: topAllTime,
+      builder: (context, snapshot) {
+        final data = snapshot.data ?? [];
+        //final monthName = DateFormat('MMMM').format(DateTime.now());
+
+        if (data.isEmpty) {
+          return Card(
+            child: ListTile(
+              leading: const Icon(Icons.arrow_upward_rounded),
+              title: Text("Top Categories all time"),
+              subtitle: const Text("No data"),
+            ),
+          );
+        }
+
+        // Build a string for top 5 categories
+        final items = <String>[];
+        for (int i = 0; i < data.length && i < 5; i++) {
+          final entry = data[i];
+          final cat = entry['category'] ?? '';
+          final total = entry['total'] ?? 0;
+          items.add("${i + 1}. $cat - KES $total");
+        }
+
+        return Card(
+          child: ListTile(
+            leading: const Icon(Icons.arrow_upward_rounded),
+            title: Text("Top Categories all time"),
+            subtitle: Text(items.join('\n')),
+            //isThreeLine: items.length > 1,
           ),
         );
       },
