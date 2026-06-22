@@ -168,6 +168,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             title: Text("Top Categories in $monthName"),
             subtitle: Text(items.join('\n')),
             isThreeLine: items.length > 1,
+            onTap: () => _showMonthExpenses(data, monthName),
           ),
         );
       },
@@ -185,7 +186,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           return Card(
             child: ListTile(
               leading: const Icon(Icons.arrow_upward_rounded),
-              title: Text("Top Categories all time"),
+              title: Text("Cummulative expenditure"),
               subtitle: const Text("No data"),
             ),
           );
@@ -203,9 +204,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return Card(
           child: ListTile(
             leading: const Icon(Icons.arrow_upward_rounded),
-            title: Text("Top Categories all time"),
+            title: Text("Cummulative expenditure"),
             subtitle: Text(items.join('\n')),
             //isThreeLine: items.length > 1,
+            onTap: () => _showAllExpenses(data),
           ),
         );
       },
@@ -364,6 +366,97 @@ class _DashboardScreenState extends State<DashboardScreen> {
               );
             }),
           ],
+        );
+      },
+    );
+  }
+
+  void _showMonthExpenses(
+    List<Map<String, dynamic>> categories,
+    String monthName,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "$monthName expenditure",
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: categories.length,
+                    itemBuilder: (context, index) {
+                      final item = categories[index];
+
+                      return ListTile(
+                        leading: CircleAvatar(child: Text("${index + 1}")),
+                        title: Text(item['category']),
+                        trailing: Text("KES ${item['total']}"),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showAllExpenses(List<Map<String, dynamic>> categories) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "Cummulative expenditure",
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: categories.length,
+                    itemBuilder: (context, index) {
+                      final item = categories[index];
+
+                      return ListTile(
+                        leading: CircleAvatar(child: Text("${index + 1}")),
+                        title: Text(item['category']),
+                        trailing: Text("KES ${item['total']}"),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
         );
       },
     );

@@ -9,11 +9,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:modo/main.dart';
+import 'package:modo/theme_provider.dart';
 
 void main() {
   testWidgets('Counter increments smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const ExpenseApp());
+    await tester.pumpWidget(ExpenseApp(themeProvider: ThemeProvider()));
 
     // Verify that our counter starts at 0.
     expect(find.text('0'), findsOneWidget);

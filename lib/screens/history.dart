@@ -127,9 +127,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       }
                     }
                     await _refresh();
-                    if (!mounted) return;
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(this.context).showSnackBar(
+                    if (!context.mounted) return;
+                    Navigator.of(context).pop;
+                    ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text('Imported $importedCount expenses'),
                       ),
@@ -247,8 +247,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           builder: (context) {
                             final description = (e['description'] as String?)
                                 ?.trim();
-                            final dateValue = e['expense_date'] ?? '';
-                            String importedDate = '';
+                            //final dateValue = e['expense_date'] ?? '';
+                            //String importedDate = '';
 
                             return StatefulBuilder(
                               builder: (context, setState) {
@@ -303,6 +303,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             label: 'Clear All',
             labelBackgroundColor: Theme.of(context).colorScheme.surface,
             onTap: () async {
+              final messenger = ScaffoldMessenger.of(context);
               final confirmed = await showDialog<bool>(
                 context: context,
                 builder: (context) {
@@ -337,11 +338,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
               if (confirmed == true) {
                 await db.clearExpenses();
                 await _refresh();
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('All expenses cleared')),
-                  );
-                }
+                if (!mounted) return;
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('All expenses cleared')),
+                );
               }
             },
           ),
