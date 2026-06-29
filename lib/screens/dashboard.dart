@@ -72,7 +72,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const SizedBox(height: 20),
             _buildTopCategory(),
             const SizedBox(height: 20),
-            _buildLineChart(),
+            _buildWeeklyChart(),
             const SizedBox(height: 20),
             _buildRecent(),
           ],
@@ -214,7 +214,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildLineChart() {
+  Widget _buildWeeklyChart() {
     return FutureBuilder<List<Map<String, dynamic>>>(
       future: weeklyData,
       builder: (context, snapshot) {
@@ -233,11 +233,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
           );
         }
 
-        // Prepare data for the chart
-        final spots = <FlSpot>[];
+        final bars = <BarChartGroupData>[];
+
         for (int i = 0; i < data.length; i++) {
-          final amount = (data[i]['total'] as num?)?.toDouble() ?? 0.0;
-          spots.add(FlSpot(i.toDouble(), amount));
+          final amount = (data[i]['total'] as num?)?.toDouble() ?? 0;
+
+          bars.add(
+            BarChartGroupData(
+              x: i,
+              barRods: [
+                BarChartRodData(
+                  toY: amount,
+                  width: 18,
+                  borderRadius: BorderRadius.circular(4),
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ],
+            ),
+          );
         }
 
         return Card(
@@ -247,77 +260,71 @@ class _DashboardScreenState extends State<DashboardScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  "Spending (Past 12 Weeks)",
+                  "Weekly Spending (Last 12 Weeks)",
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
+
                 SizedBox(
-                  height: 250,
-                  child: LineChart(
-                    LineChartData(
+                  height: 260,
+                  child: BarChart(
+                    BarChartData(
+                      alignment: BarChartAlignment.spaceAround,
+
                       gridData: const FlGridData(show: true),
+
+                      borderData: FlBorderData(show: false),
+
+                      barGroups: bars,
+
                       titlesData: FlTitlesData(
-                        show: true,
-                        rightTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
                         topTitles: const AxisTitles(
                           sideTitles: SideTitles(showTitles: false),
                         ),
+                        rightTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+
                         leftTitles: AxisTitles(
                           sideTitles: SideTitles(
                             showTitles: true,
                             reservedSize: 48,
                             getTitlesWidget: (value, meta) {
-                              final kValue = value / 1000;
-                              final label = kValue <= 0
-                                  ? '0'
-                                  : kValue >= 1
-                                  ? '${kValue.toStringAsFixed(kValue % 1 == 0 ? 0 : 1)}k'
-                                  : kValue >= 0.1
-                                  ? '${kValue.toStringAsFixed(1)}k'
-                                  : '${kValue.toStringAsFixed(2)}k';
+                              if (value == 0) {
+                                return const Text("0");
+                              }
+
+                              if (value >= 1000) {
+                                return Text(
+                                  "${(value / 1000).toStringAsFixed(value % 1000 == 0 ? 0 : 1)}k",
+                                  style: const TextStyle(fontSize: 10),
+                                );
+                              }
+
                               return Text(
-                                label,
+                                value.toInt().toString(),
                                 style: const TextStyle(fontSize: 10),
                               );
                             },
                           ),
                         ),
+
                         bottomTitles: AxisTitles(
                           sideTitles: SideTitles(
                             showTitles: true,
-                            reservedSize: 32,
+                            reservedSize: 28,
                             getTitlesWidget: (value, meta) {
-                              final index = value.toInt();
-                              if (index >= 0 && index < data.length) {
-                                if (index % 2 == 0) {
-                                  return Text(
-                                    index.toString(),
-                                    style: const TextStyle(fontSize: 10),
-                                  );
-                                }
-                              }
-                              return const Text('');
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: Text(
+                                  "W${value.toInt() + 1}",
+                                  style: const TextStyle(fontSize: 10),
+                                ),
+                              );
                             },
                           ),
                         ),
                       ),
-                      borderData: FlBorderData(show: true),
-                      lineBarsData: [
-                        LineChartBarData(
-                          spots: spots,
-                          isCurved: true,
-                          color: Colors.grey,
-                          barWidth: 3,
-                          dotData: const FlDotData(show: true),
-                          belowBarData: BarAreaData(
-                            show: true,
-                            color: Colors.grey.withValues(alpha: 0.3),
-                          ),
-                        ),
-                      ],
-                      minY: 0,
                     ),
                   ),
                 ),
